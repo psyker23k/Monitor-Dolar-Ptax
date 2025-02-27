@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitor PTAX</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: #f0f2f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }
+
+    .header {
+      background-color: #1a237e;
+      color: white;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 5px;
+    }
+
+    .header p {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    .controls {
+      padding: 15px 20px;
+      background-color: #e8eaf6;
+      display: grid;
+      grid-template-columns: 1fr 1fr auto;
+      gap: 15px;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+    }
+
+    .controls select,
+    .controls input {
+      padding: 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .controls button {
+      background-color: #3949ab;
+      color: white;
+      border: none;
+      padding: 8px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background-color 0.3s;
+      white-space: nowrap;
+    }
+
+    .controls button:hover {
+      background-color: #303f9f;
+    }
+
+    .ptax-container {
+      padding: 20px;
+    }
+
+    .ptax-main {
+      background-color: #e8f5e9;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      border-left: 4px solid #43a047;
+    }
+
+    .ptax-main h2 {
+      color: #2e7d32;
+      margin-bottom: 15px;
+      font-size: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .ptax-main h2 span {
+      font-size: 14px;
+      padding: 4px 10px;
+      background-color: #c8e6c9;
+      border-radius: 20px;
+      color: #1b5e20;
+    }
+
+    .ptax-details {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .ptax-value {
+      background-color: white;
+      border-radius: 6px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .ptax-value h3 {
+      color: #424242;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+
+    .ptax-value p {
+      font-size: 22px;
+      font-weight: bold;
+      color: #212121;
+    }
+
+    .ptax-partials {
+      margin-top: 20px;
+    }
+
+    .ptax-partials h2 {
+      color: #455a64;
+      margin-bottom: 15px;
+      font-size: 18px;
+    }
+
+    .ptax-partials-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 15px;
+    }
+
+    .ptax-partial-card {
+      background-color: white;
+      border-radius: 8px;
+      padding: 15px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+      border-left: 3px solid #7986cb;
+    }
+
+    .ptax-partial-card h3 {
+      color: #3f51b5;
+      margin-bottom: 10px;
+      font-size: 16px;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .ptax-partial-card h3 span {
+      font-size: 12px;
+      padding: 2px 8px;
+      background-color: #e8eaf6;
+      border-radius: 20px;
+      color: #3949ab;
+    }
+
+    .ptax-values {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .ptax-partial-value {
+      padding: 10px;
+      background-color: #f5f5f5;
+      border-radius: 4px;
+    }
+
+    .ptax-partial-value h4 {
+      font-size: 12px;
+      color: #757575;
+      margin-bottom: 5px;
+    }
+
+    .ptax-partial-value p {
+      font-size: 16px;
+      font-weight: bold;
+      color: #424242;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #757575;
+    }
+
+    .loading i {
+      display: block;
+      font-size: 40px;
+      margin-bottom: 10px;
+      animation: spin 1s infinite linear;
+    }
+
+    .error-message {
+      background-color: #ffebee;
+      border-left: 4px solid #ef5350;
+      padding: 15px;
+      margin: 20px 0;
+      color: #b71c1c;
+      border-radius: 4px;
+    }
+
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 768px) {
+      .controls {
+        grid-template-columns: 1fr;
+      }
+
+      .ptax-details, .ptax-partials-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Monitor PTAX</h1>
+      <p>Dados oficiais do Banco Central do Brasil</p>
+    </div>
+
+    <div class="controls">
+      <select id="currency-selector">
+        <option value="">Carregando moedas...</option>
+      </select>
+      <input type="date" id="date-selector">
+      <button id="fetch-btn">Buscar PTAX</button>
+    </div>
+
+    <div id="content" class="ptax-container">
+      <div id="loading" class="loading">
+        <i>⟳</i>
+        <p>Carregando dados da PTAX...</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Elementos da interface
+      const currencySelector = document.getElementById('currency-selector');
+      const dateSelector = document.getElementById('date-selector');
+      const fetchBtn = document.getElementById('fetch-btn');
+      const contentArea = document.getElementById('content');
+      const loadingElement = document.getElementById('loading');
+
+      // Configurar a data atual no seletor
+      const today = new Date();
+      const formattedDate = today.toISOString().split('T')[0];
+      dateSelector.value = formattedDate;
+
+      // Função para formatar o valor da PTAX
+      function formatCurrency(value) {
+        return parseFloat(value).toFixed(4);
+      }
+
+      // Função para formatar a data
+      function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('pt-BR');
+      }
+
+      // Função para carregar as moedas disponíveis
+      async function loadCurrencies() {
+        try {
+          const moedasUrl = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/Moedas?$format=json';
+          const response = await fetch(moedasUrl);
+
+          if (!response.ok) {
+            throw new Error('Erro ao carregar lista de moedas');
+          }
+
+          const data = await response.json();
+
+          // Limpar o select
+          currencySelector.innerHTML = '';
+
+          // Adicionar as opções de moedas
+          data.value.sort((a, b) => a.nomeFormatado.localeCompare(b.nomeFormatado)).forEach(moeda => {
+            const option = document.createElement('option');
+            option.value = moeda.simbolo;
+            option.textContent = `${moeda.simbolo} - ${moeda.nomeFormatado}`;
+            currencySelector.appendChild(option);
+          });
+
+          // Selecionar USD por padrão
+          currencySelector.value = 'USD';
+        } catch (error) {
+          console.error('Erro ao carregar moedas:', error);
+          currencySelector.innerHTML = '<option value="">Erro ao carregar moedas</option>';
+        }
+      }
+
+      // Função para buscar os dados da PTAX
+      async function fetchPtaxData() {
+        // Validar seleção de moeda
+        if (!currencySelector.value) {
+          displayError('Por favor, selecione uma moeda.');
+          return;
+        }
+
+        // Exibir carregamento
+        contentArea.innerHTML = '';
+        contentArea.appendChild(loadingElement);
+
+        try {
+          // Obter a data selecionada e formatar para MM-DD-AAAA
+          const selectedDate = dateSelector.value;
+          const [year, month, day] = selectedDate.split('-');
+          const formattedDate = `${month}-${day}-${year}`;
+          const selectedCurrency = currencySelector.value;
+
+          // Construir a URL da API com a moeda e data selecionadas
+          const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='${selectedCurrency}'&@dataCotacao='${formattedDate}'&$format=json`;
+
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error('Erro ao buscar dados da API do Banco Central');
+          }
+
+          const result = await response.json();
+          if (!result.value || result.value.length === 0) {
+            throw new Error('Não há dados disponíveis para esta data');
+          }
+
+          // Organizar os dados por horário
+          const cotacoes = {};
+          result.value.forEach(item => {
+            const dataHora = new Date(item.dataHoraCotacao);
+            const hora = dataHora.getHours();
+            if ([10, 11, 12, 13].includes(hora)) {
+              cotacoes[`${hora}:00`] = {
+                buy: item.cotacaoCompra,
+                sell: item.cotacaoVenda
+              };
+            }
+          });
+
+          // Criar array de parciais ordenadas
+          const partials = ['10:00', '11:00', '12:00', '13:00']
+            .map(time => {
+              if (cotacoes[time]) {
+                return {
+                  time,
+                  buy: cotacoes[time].buy,
+                  sell: cotacoes[time].sell
+                };
+              }
+              return null;
+            })
+            .filter(item => item !== null);
+
+          if (partials.length === 0) {
+            throw new Error('Não há cotações PTAX intermediárias disponíveis para esta data');
+          }
+
+          // Calcular média final
+          const totalBuy = partials.reduce((sum, p) => sum + p.buy, 0);
+          const totalSell = partials.reduce((sum, p) => sum + p.sell, 0);
+          const count = partials.length;
+
+          const ptaxData = {
+            currency: selectedCurrency,
+            date: selectedDate,
+            final: {
+              buy: totalBuy / count,
+              sell: totalSell / count
+            },
+            partials
+          };
+
+          displayPtaxData(ptaxData);
+        } catch (error) {
+          console.error('Erro na API:', error);
+          displayError(error.message || "Erro ao buscar os dados da PTAX. Tente novamente mais tarde.");
+        }
+      }
+
+      // Função para exibir os dados na interface
+      function displayPtaxData(data) {
+        // Limpar o conteúdo anterior
+        contentArea.innerHTML = '';
+
+        // Criar o elemento para a PTAX principal
+        const mainPtaxElement = document.createElement('div');
+        mainPtaxElement.className = 'ptax-main';
+
+        mainPtaxElement.innerHTML = `
+          <h2>PTAX ${data.currency} <span>${formatDate(data.date)}</span></h2>
+          <div class="ptax-details">
+            <div class="ptax-value">
+              <h3>PTAX Compra</h3>
+              <p>R$ ${formatCurrency(data.final.buy)}</p>
+            </div>
+            <div class="ptax-value">
+              <h3>PTAX Venda</h3>
+              <p>R$ ${formatCurrency(data.final.sell)}</p>
+            </div>
+          </div>
+        `;
+
+        // Criar o elemento para as PTAX parciais
+        const partialsElement = document.createElement('div');
+        partialsElement.className = 'ptax-partials';
+
+        let partialsHTML = `
+          <h2>PTAX Parciais do Dia</h2>
+          <div class="ptax-partials-grid">
+        `;
+
+        // Adicionar cada PTAX parcial
+        data.partials.forEach(partial => {
+          partialsHTML += `
+            <div class="ptax-partial-card">
+              <h3>PTAX ${partial.time} <span>Parcial</span></h3>
+              <div class="ptax-values">
+                <div class="ptax-partial-value">
+                  <h4>Compra</h4>
+                  <p>R$ ${formatCurrency(partial.buy)}</p>
+                </div>
+                <div class="ptax-partial-value">
+                  <h4>Venda</h4>
+                  <p>R$ ${formatCurrency(partial.sell)}</p>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        partialsHTML += `</div>`;
+        partialsElement.innerHTML = partialsHTML;
+
+        // Adicionar os elementos ao conteúdo
+        contentArea.appendChild(mainPtaxElement);
+        contentArea.appendChild(partialsElement);
+      }
+
+      // Função para exibir mensagens de erro
+      function displayError(message) {
+        contentArea.innerHTML = `
+          <div class="error-message">
+            <p>${message}</p>
+          </div>
+        `;
+      }
+
+      // Carregar lista de moedas ao iniciar
+      loadCurrencies();
+
+      // Adicionar event listener ao botão
+      fetchBtn.addEventListener('click', fetchPtaxData);
+
+      // Buscar os dados ao carregar a página
+      fetchPtaxData();
+    });
+  </script>
+</body>
+</html>
