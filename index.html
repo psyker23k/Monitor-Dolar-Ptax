@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Monitor PTAX</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     * {
       margin: 0;
@@ -18,7 +19,7 @@
     }
 
     .container {
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       background-color: #fff;
       border-radius: 10px;
@@ -132,6 +133,14 @@
       color: #212121;
     }
 
+    .chart-container {
+      padding: 20px;
+      background-color: white;
+      border-radius: 8px;
+      margin: 20px 0;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
     .ptax-partials {
       margin-top: 20px;
     }
@@ -218,6 +227,13 @@
       border-radius: 4px;
     }
 
+    .cache-status {
+      font-size: 12px;
+      color: #757575;
+      text-align: right;
+      padding: 5px 20px;
+    }
+
     @keyframes spin {
       from { transform: rotate(0deg); }
       to { transform: rotate(360deg); }
@@ -255,6 +271,8 @@
         <p>Carregando dados da PTAX...</p>
       </div>
     </div>
+
+    <div class="cache-status" id="cache-status"></div>
   </div>
 
   <script>
@@ -265,6 +283,11 @@
       const fetchBtn = document.getElementById('fetch-btn');
       const contentArea = document.getElementById('content');
       const loadingElement = document.getElementById('loading');
+      const cacheStatus = document.getElementById('cache-status');
+
+      // Cache local
+      const CACHE_KEY = 'ptax_cache';
+      const CACHE_DURATION = 24 * 60 * 60 * 1000; // 24 horas
 
       // Configurar a data atual no seletor
       const today = new Date();
@@ -282,8 +305,41 @@
         return date.toLocaleDateString('pt-BR');
       }
 
+      // Funções de cache
+      function saveToCache(key, data) {
+        const cacheItem = {
+          timestamp: new Date().getTime(),
+          data: data
+        };
+        localStorage.setItem(key, JSON.stringify(cacheItem));
+      }
+
+      function getFromCache(key) {
+        const cached = localStorage.getItem(key);
+        if (!cached) return null;
+
+        const cacheItem = JSON.parse(cached);
+        const now = new Date().getTime();
+
+        if (now - cacheItem.timestamp > CACHE_DURATION) {
+          localStorage.removeItem(key);
+          return null;
+        }
+
+        return cacheItem.data;
+      }
+
       // Função para carregar as moedas disponíveis
       async function loadCurrencies() {
+        const cacheKey = 'currencies_cache';
+        const cachedData = getFromCache(cacheKey);
+
+        if (cachedData) {
+          populateCurrencies(cachedData);
+          cacheStatus.textContent = 'Usando dados em cache';
+          return;
+        }
+
         try {
           const moedasUrl = 'https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/Moedas?$format=json';
           const response = await fetch(moedasUrl);
@@ -293,46 +349,101 @@
           }
 
           const data = await response.json();
-
-          // Limpar o select
-          currencySelector.innerHTML = '';
-
-          // Adicionar as opções de moedas
-          data.value.sort((a, b) => a.nomeFormatado.localeCompare(b.nomeFormatado)).forEach(moeda => {
-            const option = document.createElement('option');
-            option.value = moeda.simbolo;
-            option.textContent = `${moeda.simbolo} - ${moeda.nomeFormatado}`;
-            currencySelector.appendChild(option);
-          });
-
-          // Selecionar USD por padrão
-          currencySelector.value = 'USD';
+          saveToCache(cacheKey, data.value);
+          populateCurrencies(data.value);
+          cacheStatus.textContent = 'Dados atualizados do servidor';
         } catch (error) {
           console.error('Erro ao carregar moedas:', error);
           currencySelector.innerHTML = '<option value="">Erro ao carregar moedas</option>';
         }
       }
 
+      function populateCurrencies(currencies) {
+        currencySelector.innerHTML = '';
+        currencies.sort((a, b) => a.nomeFormatado.localeCompare(b.nomeFormatado)).forEach(moeda => {
+          const option = document.createElement('option');
+          option.value = moeda.simbolo;
+          option.textContent = `${moeda.simbolo} - ${moeda.nomeFormatado}`;
+          currencySelector.appendChild(option);
+        });
+        currencySelector.value = 'USD';
+      }
+
+      let chart = null;
+
+      function createChart(data) {
+        if (chart) {
+          chart.destroy();
+        }
+
+        const ctx = document.getElementById('ptax-chart').getContext('2d');
+        const labels = data.partials.map(p => p.time);
+        const buyData = data.partials.map(p => p.buy);
+        const sellData = data.partials.map(p => p.sell);
+
+        chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Compra',
+                data: buyData,
+                borderColor: '#43a047',
+                tension: 0.1,
+                fill: false
+              },
+              {
+                label: 'Venda',
+                data: sellData,
+                borderColor: '#3949ab',
+                tension: 0.1,
+                fill: false
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: `Evolução PTAX ${data.currency} - ${formatDate(data.date)}`
+              }
+            },
+            scales: {
+              y: {
+                beginAtZero: false
+              }
+            }
+          }
+        });
+      }
+
       // Função para buscar os dados da PTAX
       async function fetchPtaxData() {
-        // Validar seleção de moeda
         if (!currencySelector.value) {
           displayError('Por favor, selecione uma moeda.');
           return;
         }
 
-        // Exibir carregamento
+        const date = dateSelector.value;
+        const cacheKey = `ptax_${currencySelector.value}_${date}`;
+        const cachedData = getFromCache(cacheKey);
+
+        if (cachedData) {
+          displayPtaxData(cachedData);
+          cacheStatus.textContent = 'Usando dados em cache';
+          return;
+        }
+
         contentArea.innerHTML = '';
         contentArea.appendChild(loadingElement);
 
         try {
-          // Obter a data selecionada e formatar para MM-DD-AAAA
-          const selectedDate = dateSelector.value;
-          const [year, month, day] = selectedDate.split('-');
+          const [year, month, day] = date.split('-');
           const formattedDate = `${month}-${day}-${year}`;
           const selectedCurrency = currencySelector.value;
 
-          // Construir a URL da API com a moeda e data selecionadas
           const url = `https://olinda.bcb.gov.br/olinda/servico/PTAX/versao/v1/odata/CotacaoMoedaDia(moeda=@moeda,dataCotacao=@dataCotacao)?@moeda='${selectedCurrency}'&@dataCotacao='${formattedDate}'&$format=json`;
 
           const response = await fetch(url);
@@ -345,7 +456,6 @@
             throw new Error('Não há dados disponíveis para esta data');
           }
 
-          // Organizar os dados por horário
           const cotacoes = {};
           result.value.forEach(item => {
             const dataHora = new Date(item.dataHoraCotacao);
@@ -358,7 +468,6 @@
             }
           });
 
-          // Criar array de parciais ordenadas
           const partials = ['10:00', '11:00', '12:00', '13:00']
             .map(time => {
               if (cotacoes[time]) {
@@ -376,14 +485,13 @@
             throw new Error('Não há cotações PTAX intermediárias disponíveis para esta data');
           }
 
-          // Calcular média final
           const totalBuy = partials.reduce((sum, p) => sum + p.buy, 0);
           const totalSell = partials.reduce((sum, p) => sum + p.sell, 0);
           const count = partials.length;
 
           const ptaxData = {
             currency: selectedCurrency,
-            date: selectedDate,
+            date: date,
             final: {
               buy: totalBuy / count,
               sell: totalSell / count
@@ -391,6 +499,8 @@
             partials
           };
 
+          saveToCache(cacheKey, ptaxData);
+          cacheStatus.textContent = 'Dados atualizados do servidor';
           displayPtaxData(ptaxData);
         } catch (error) {
           console.error('Erro na API:', error);
@@ -398,12 +508,9 @@
         }
       }
 
-      // Função para exibir os dados na interface
       function displayPtaxData(data) {
-        // Limpar o conteúdo anterior
         contentArea.innerHTML = '';
 
-        // Criar o elemento para a PTAX principal
         const mainPtaxElement = document.createElement('div');
         mainPtaxElement.className = 'ptax-main';
 
@@ -421,7 +528,11 @@
           </div>
         `;
 
-        // Criar o elemento para as PTAX parciais
+        // Adicionar container para o gráfico
+        const chartContainer = document.createElement('div');
+        chartContainer.className = 'chart-container';
+        chartContainer.innerHTML = '<canvas id="ptax-chart"></canvas>';
+
         const partialsElement = document.createElement('div');
         partialsElement.className = 'ptax-partials';
 
@@ -430,7 +541,6 @@
           <div class="ptax-partials-grid">
         `;
 
-        // Adicionar cada PTAX parcial
         data.partials.forEach(partial => {
           partialsHTML += `
             <div class="ptax-partial-card">
@@ -452,12 +562,13 @@
         partialsHTML += `</div>`;
         partialsElement.innerHTML = partialsHTML;
 
-        // Adicionar os elementos ao conteúdo
         contentArea.appendChild(mainPtaxElement);
+        contentArea.appendChild(chartContainer);
         contentArea.appendChild(partialsElement);
+
+        createChart(data);
       }
 
-      // Função para exibir mensagens de erro
       function displayError(message) {
         contentArea.innerHTML = `
           <div class="error-message">
@@ -466,13 +577,9 @@
         `;
       }
 
-      // Carregar lista de moedas ao iniciar
+      // Event Listeners
       loadCurrencies();
-
-      // Adicionar event listener ao botão
       fetchBtn.addEventListener('click', fetchPtaxData);
-
-      // Buscar os dados ao carregar a página
       fetchPtaxData();
     });
   </script>
