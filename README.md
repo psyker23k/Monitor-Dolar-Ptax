@@ -4,7 +4,7 @@
 
 ![Resultado final do projeto](images/img1.png)
 
-<h4 align="center"><a href="https://ornate-buttercream-a352c0.netlify.app/">Clique para visitar o projeto</a></h4>
+<h4 align="center"><a href="https://luxury-sunshine-ac8703.netlify.app/">Clique para visitar o projeto</a></h4>
 
 ## 📚 Descrição
 O **Monitor PTAX** é uma aplicação web que permite consultar as cotações de compra e venda de moedas estrangeiras, com base nas taxas oficiais do Banco Central do Brasil (PTAX). Ele permite aos usuários buscar cotações de moedas específicas para uma data selecionada e visualiza tanto as cotações finais quanto as cotações parciais ao longo do dia.
